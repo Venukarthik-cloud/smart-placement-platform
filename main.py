@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException 
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -44,6 +44,46 @@ class StudentCreate(BaseModel):
         default="Preparing",
         max_length=50
     )
+
+    @field_validator("name", "college")
+    @classmethod
+    def validate_text(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value:
+            raise ValueError("This field cannot be empty.")
+
+        return value
+
+    @field_validator("skills")
+    @classmethod
+    def clean_skills(cls, skills: list[str]) -> list[str]:
+        cleaned = []
+        seen = set()
+
+        for skill in skills:
+            skill = skill.strip()
+
+            if skill and skill.lower() not in seen:
+                cleaned.append(skill)
+                seen.add(skill.lower())
+
+        return cleaned
+
+    @field_validator("placement_status")
+    @classmethod
+    def validate_status(cls, value: str) -> str:
+        allowed = {"Preparing", "In Progress", "Ready"}
+        value = value.strip().title()
+
+        if value not in allowed:
+            raise ValueError(
+                "Status must be Preparing, In Progress, or Ready."
+            )
+
+        return value
+
+    
 
 
 # Home endpoint
@@ -177,10 +217,19 @@ def get_placement_score(student_id: int):
                     detail="Student not found"
                 )
 
-            skills = student["skills"] or []
+            
+            raw_skills = student["skills"] or ""
 
-            # Score based on the number of recorded skills.
-            skill_score = min(len(skills) * 10, 40)
+            skills = [
+                skill.strip()
+                for skill in raw_skills.split(",")
+                if skill.strip()
+            ]
+
+            # Count distinct skills, ignoring capitalization.
+            unique_skills = {skill.casefold() for skill in skills}
+            skill_score = min(len(unique_skills) * 10, 40)
+
 
             # Initial baseline score.
             baseline_score = 20
