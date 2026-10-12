@@ -249,14 +249,38 @@ def get_placement_score(student_id: int):
                 100
             )
 
+           
+
+
             return {
                 "student_id": student["id"],
                 "name": student["name"],
                 "placement_score": total_score,
                 "maximum_score": 100,
+                "score_breakdown": {
+                    "technical_skills": {
+                        "points": skill_score,
+                        "maximum": 40
+                    },
+                    "baseline": {
+                        "points": baseline_score,
+                        "maximum": 20
+                    },
+                    "preparation_status": {
+                        "points": preparation_score,
+                        "maximum": 40
+                    }
+                },
                 "skills": skills,
-                "placement_status": student["placement_status"]
+                "placement_status": student["placement_status"],
+                "score_note": (
+                    "Prototype estimate based on listed skills and "
+                    "self-reported preparation status; not a verified "
+                    "measure of job readiness."
+                )
             }
+
+   
 
     except SQLAlchemyError as error:
         print(f"Placement score error: {error}")
